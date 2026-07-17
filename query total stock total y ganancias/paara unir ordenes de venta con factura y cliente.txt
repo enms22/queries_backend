@@ -1,0 +1,29 @@
+SELECT 
+    c.ref AS orden_venta,
+    f.ref AS factura,
+    f.datef AS fecha_factura,
+    f.total_ttc AS total_factura
+FROM llx_commande AS c
+-- Unimos la orden con su enlace a otro elemento
+INNER JOIN llx_element_element AS ee ON c.rowid = ee.fk_source
+-- Unimos con la factura destino
+INNER JOIN llx_facture AS f ON ee.fk_target = f.rowid
+WHERE ee.sourcetype = 'commande' 
+  AND ee.targettype = 'facture'
+  AND c.ref LIKE 'OV%';
+
+  SELECT 
+    c.ref AS orden_venta,
+    c.ref_client AS ref_client_orden,
+    f.ref AS factura,
+    f.ref_client AS ref_client_factura,
+    f.datef AS fecha_factura,
+    f.total_ttc AS total_factura
+FROM llx_commande AS c
+INNER JOIN llx_element_element AS ee ON c.rowid = ee.fk_source
+INNER JOIN llx_facture AS f ON ee.fk_target = f.rowid
+WHERE ee.sourcetype = 'commande' 
+  AND ee.targettype = 'facture'
+  AND c.ref LIKE 'OV%'
+  AND f.datef >= '2026-07-01'
+ORDER BY f.datef ASC;

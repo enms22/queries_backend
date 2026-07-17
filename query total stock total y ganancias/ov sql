@@ -1,0 +1,64 @@
+SELECT 
+    c.rowid AS id_documento, -- id orden de venta
+    DATE_FORMAT(c.date_creation, '%Y-%m-%d') AS fecha,
+    DATE_FORMAT(c.date_creation,'%H:%i:%s') AS hora, -- hora de creacion
+    caja.name AS terminal, -- buscar en expediction y entrepot
+    c.ticketnumber AS num_ticket,
+    cd.qty AS cantidad_vendida,
+    p.ref AS sku, -- sku interno de nosotros y descripcion margebn de 
+    p.label AS producto, -- producto
+    pe.catproveedor AS proveedor, -- proveedor
+    pe.marcaproducto AS marca, -- marca
+	cd.total_ttc AS precio_con_iva,
+    cd.subprice AS precio_sin_iva, -- ficha del producto
+    (cd.subprice * cd.qty ) AS venta_total_sin_iva,
+	p.pmp AS pmp_sin_iva,
+    (cd.subprice - p.pmp) AS ganancia_produto_unitario,
+    -- Resta: Ganancia unitaria multiplicada por la cantidad vendida
+    ((cd.subprice - p.pmp) * cd.qty) AS ganancia_total,  -- (p.price - (p.pmp * cd.qty)) AS ganancia_total_moneda,
+    -- Porcentaje de margen: (Venta - Costo) / Venta
+    IF((cd.subprice * cd.qty) > 0, (((cd.subprice- p.pmp) * cd.qty) / (cd.subprice * cd.qty)) * 100, 0) AS margen_porcentaje -- IF(p.price > 0, ((p.price - (p.pmp * cd.qty)) / p.price) * 100, 0) AS margen_porcentaje,
+   
+    
+FROM llx_product AS p
+
+INNER JOIN llx_product_extrafields AS pe ON p.rowid = pe.fk_object
+-- Usar tabla llx_pos_tickecdet para saber que producto se vendio en cada ticket
+INNER JOIN llx_pos_tickecdet AS cd ON p.rowid = cd.fk_product
+-- Usar tabla llx_pos_ticket para saber el numero del ticket e informacion en general
+INNER JOIN llx_pos_ticket AS c ON cd.fk_ticket = c.rowid
+
+-- Usar tabla llx_commandedet para saber que producto se vendio en cada ticket
+INNER JOIN llx_commandedet AS cd ON p.rowid = cd.fk_product 
+-- Usar tabla llx_commande para saber el numero de orden de venta e informacion en general
+INNER JOIN llx_commande AS c ON cd.fk_commande = c.rowid
+
+-- Usar tabla llx_product_stock para saber el stock
+INNER JOIN llx_product_stock AS s ON p.rowid = s.fk_product
+-- Usar tabla llx_entrepot para saber el stock
+INNER JOIN llx_entrepot AS e ON s.fk_entrepot = e.rowid
+
+LEFT JOIN llx_pos_cash AS caja ON c.fk_cash = caja.rowid
+
+WHERE DATE(c.date_creation) = '2025-12-23'
+AND c.ticketnumber LIKE 'VPV%'
+
+AND s.reel > 0
+
+GROUP BY 
+    p.rowid, 
+    p.ref, 
+    p.label, 
+    pe.catproveedor, 
+    pe.marcaproducto, 
+    p.price, 
+    p.pmp, 
+    c.rowid,
+    c.ticketnumber,
+    cd.total_ttc,
+    cd.subprice,
+    cd.qty,
+    c.date_creation
+
+HAVING SUM(s.reel) > 0
+ORDER BY c.rowid ASC;
